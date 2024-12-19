@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:16.1
@@ -7,15 +9,14 @@ services:
     volumes:
       - ./volumes/postgres:/var/lib/postgresql/data/
     environment:
-      - POSTGRES_DB=catsgram
-      - POSTGRES_USER=dbuser
-      - POSTGRES_PASSWORD=12345
+      POSTGRES_DB: catsgram
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: 12345
     healthcheck:
-      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
-      timeout: 5s
+      test: ["CMD", "pg_isready", "-q", "-d", "catsgram", "-U", "dbuser"]
       interval: 5s
+      timeout: 5s
       retries: 10
-
 
   db-init:
     image: postgres:16.1
@@ -51,3 +52,18 @@ services:
             post_id BIGINT NOT NULL REFERENCES posts(id)
           );
         EOSQL
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: catsgram-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/catsgram
+      SPRING_DATASOURCE_USERNAME: dbuser
+      SPRING_DATASOURCE_PASSWORD: 12345
+    depends_on:
+      db:
+        condition: service_healthy
